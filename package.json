@@ -1,0 +1,20 @@
+{
+  "name": "ml-visualizations",
+  "version": "1.0.0",
+  "description": "Interactive machine learning visualizations for education",
+  "private": true,
+  "scripts": {
+    "dev": "python3 -m http.server 8080",
+    "start": "npx serve ."
+  },
+  "keywords": [
+    "machine-learning",
+    "visualization",
+    "education",
+    "bias-variance",
+    "decision-trees",
+    "interactive"
+  ],
+  "author": "",
+  "license": "MIT"
+}

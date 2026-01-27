@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML Visualizations - Interactive Machine Learning Explainers</title>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-bg: #f5f0e8;
+            --color-text: #232f3e;
+            --color-text-light: #545b64;
+            --color-accent: #ff9900;
+            --color-blue: #527699;
+            --color-green: #419d78;
+            --color-purple: #6b5b95;
+            --color-border: #d5d5d5;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--color-bg);
+            color: var(--color-text);
+            line-height: 1.7;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 60px 24px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--color-text);
+            margin-bottom: 16px;
+            letter-spacing: -0.02em;
+        }
+
+        header h1 span {
+            color: var(--color-accent);
+        }
+
+        header .subtitle {
+            font-size: 1.25rem;
+            color: var(--color-text-light);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .visualizations {
+            display: grid;
+            gap: 24px;
+        }
+
+        .viz-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.2s ease;
+            display: block;
+            border-left: 5px solid transparent;
+        }
+
+        .viz-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        }
+
+        .viz-card.bias-variance {
+            border-left-color: var(--color-blue);
+        }
+
+        .viz-card.decision-tree {
+            border-left-color: var(--color-green);
+        }
+
+        .viz-card.decision-tree-multi {
+            border-left-color: var(--color-purple);
+        }
+
+        .viz-card h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .viz-card .icon {
+            font-size: 1.8rem;
+        }
+
+        .viz-card p {
+            color: var(--color-text-light);
+            font-size: 1rem;
+            margin-bottom: 16px;
+        }
+
+        .viz-card .tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            background: var(--color-bg);
+            color: var(--color-text-light);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .viz-card.bias-variance .tag { background: rgba(82, 118, 153, 0.15); color: var(--color-blue); }
+        .viz-card.decision-tree .tag { background: rgba(65, 157, 120, 0.15); color: var(--color-green); }
+        .viz-card.decision-tree-multi .tag { background: rgba(107, 91, 149, 0.15); color: var(--color-purple); }
+
+        .cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--color-accent);
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-top: 8px;
+        }
+
+        .cta svg {
+            transition: transform 0.2s;
+        }
+
+        .viz-card:hover .cta svg {
+            transform: translateX(4px);
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 80px;
+            padding-top: 40px;
+            border-top: 1px solid var(--color-border);
+            color: var(--color-text-light);
+            font-size: 0.9rem;
+        }
+
+        footer a {
+            color: var(--color-accent);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 600px) {
+            header h1 { font-size: 2.2rem; }
+            .viz-card { padding: 24px; }
+            .viz-card h2 { font-size: 1.25rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ML <span>Explain</span></h1>
+            <p class="subtitle">Interactive visualizations to help you understand fundamental machine learning concepts through hands-on exploration.</p>
+        </header>
+
+        <div class="visualizations">
+            <a href="bias_variance_tradeoff.html" class="viz-card bias-variance">
+                <h2>
+                    Bias-Variance Tradeoff
+                </h2>
+                <p>
+                    Explore the fundamental tradeoff between model simplicity and flexibility. 
+                    See how polynomial degree affects underfitting and overfitting using an intuitive 
+                    sleep-vs-exam-mistakes dataset.
+                </p>
+                <div class="tags">
+                    <span class="tag">Polynomial Regression</span>
+                    <span class="tag">MSE</span>
+                    <span class="tag">Overfitting</span>
+                    <span class="tag">Interactive</span>
+                </div>
+                <div class="cta">
+                    Explore visualization
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </div>
+            </a>
+
+            <a href="decisionTree.html" class="viz-card decision-tree">
+                <h2>
+                    Decision Trees 
+                </h2>
+                <p>
+                    Learn how decision trees work by building one step-by-step. Understand entropy, 
+                    information gain, and see how the algorithm finds optimal splits to classify 
+                    student performance.
+                </p>
+                <div class="tags">
+                    <span class="tag">Classification</span>
+                    <span class="tag">Entropy</span>
+                    <span class="tag">Information Gain</span>
+                    <span class="tag">Step-by-Step</span>
+                </div>
+                <div class="cta">
+                    Explore visualization
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </div>
+            </a>
+        </div>
+
+        <footer>
+            <p>
+                Inspired by <a href="https://mlu-explain.github.io/" target="_blank">MLU-Explain</a>. 
+                Built for learning and education.
+            </p>
+        </footer>
+    </div>
+</body>
+</html>

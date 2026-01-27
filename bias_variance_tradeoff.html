@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bias-Variance Tradeoff</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-bg: #f5f0e8;
+            --color-text: #232f3e;
+            --color-text-light: #545b64;
+            --color-accent: #ff9900;
+            --color-blue: #527699;
+            --color-red: #c44536;
+            --color-green: #419d78;
+            --color-purple: #6b5b95;
+            --color-border: #d5d5d5;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--color-bg);
+            color: var(--color-text);
+            line-height: 1.7;
+            font-size: 18px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        header h1 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            color: var(--color-text);
+            margin-bottom: 16px;
+            letter-spacing: -0.02em;
+        }
+
+        header .subtitle {
+            font-size: 1.25rem;
+            color: var(--color-text-light);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Sections */
+        section {
+            margin-bottom: 60px;
+        }
+
+        section h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--color-text);
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 3px solid var(--color-accent);
+            display: inline-block;
+        }
+
+        section p {
+            color: var(--color-text-light);
+            margin-bottom: 24px;
+        }
+
+        /* Interactive Panel */
+        .interactive-panel {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .controls-panel {
+            background: #fff;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            height: fit-content;
+        }
+
+        .main-chart-panel {
+            background: #fff;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .controls-row {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .control-item {
+            width: 100%;
+        }
+
+        .control-item label {
+            display: block;
+            font-weight: 600;
+            color: var(--color-text);
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+        }
+
+        .control-item label span {
+            float: right;
+            font-weight: 700;
+            color: var(--color-accent);
+            font-size: 1.1rem;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #e0e0e0;
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--color-accent);
+            cursor: pointer;
+            border: 3px solid #fff;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        .control-hint {
+            font-size: 0.85rem;
+            color: var(--color-text-light);
+            margin-top: 8px;
+        }
+
+        /* Metrics */
+        .metrics-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .metric {
+            flex: 1;
+            text-align: center;
+            padding: 10px 8px;
+            background: var(--color-bg);
+            border-radius: 6px;
+        }
+
+        .metric .label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            color: var(--color-text-light);
+            margin-bottom: 2px;
+        }
+
+        .metric .value {
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .metric.train .value { color: var(--color-blue); }
+        .metric.val .value { color: var(--color-red); }
+        .metric.gap .value { color: var(--color-purple); }
+
+        /* Status */
+        .status-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: var(--color-bg);
+            border-radius: 6px;
+            margin-bottom: 16px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .status-dot.underfit { background: var(--color-red); }
+        .status-dot.good { background: var(--color-green); }
+        .status-dot.overfit { background: var(--color-purple); }
+
+        .status-text {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        /* Charts */
+        .chart-container {
+            background: #fff;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .chart-container h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: var(--color-text);
+        }
+
+        .chart-container .desc {
+            font-size: 0.8rem;
+            color: var(--color-text-light);
+            margin-bottom: 12px;
+        }
+
+        .chart-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        /* Presets */
+        .presets {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 16px;
+        }
+
+        .presets-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--color-text-light);
+            margin-bottom: 4px;
+        }
+
+        .preset-btn {
+            padding: 8px 12px;
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            background: #fff;
+            color: var(--color-text);
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: inherit;
+            text-align: left;
+        }
+
+        .preset-btn:hover {
+            border-color: var(--color-accent);
+            background: #fff8f0;
+        }
+
+        /* Content sections */
+        .content-block {
+            background: #fff;
+            border-radius: 8px;
+            padding: 32px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+        }
+
+        .content-block h3 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--color-text);
+        }
+
+        .content-block ul {
+            margin-left: 24px;
+            color: var(--color-text-light);
+        }
+
+        .content-block li {
+            margin-bottom: 8px;
+        }
+
+        .content-block strong {
+            color: var(--color-text);
+        }
+
+        .concept-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .concept-card {
+            padding: 24px;
+            background: var(--color-bg);
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+
+        .concept-card.underfit { border-color: var(--color-red); }
+        .concept-card.good { border-color: var(--color-green); }
+        .concept-card.overfit { border-color: var(--color-purple); }
+
+        .concept-card h4 {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .concept-card p {
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px 0;
+            color: var(--color-text-light);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--color-border);
+            margin-top: 40px;
+        }
+
+        @media (max-width: 900px) {
+            .interactive-panel { grid-template-columns: 1fr; }
+            .chart-row { grid-template-columns: 1fr; }
+            .concept-grid { grid-template-columns: 1fr; }
+            header h1 { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Bias-Variance Tradeoff</h1>
+            <p class="subtitle">Understanding the fundamental tradeoff between model simplicity and flexibility in machine learning.</p>
+        </header>
+
+        <section>
+            <h2>The Dataset</h2>
+            <p>
+                We're exploring a simple relationship: how does the number of hours of sleep before an exam affect the number of mistakes made? 
+                The true relationship is U-shaped—both too little and too much sleep lead to more mistakes, with an optimal amount around 7 hours.
+            </p>
+        </section>
+
+        <section>
+            <h2>What are Bias and Variance?</h2>
+            <p>
+                Before diving into the tradeoff, let's understand these two fundamental sources of error in machine learning models.
+            </p>
+            
+            <div class="concept-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 24px;">
+                <div class="content-block" style="margin-bottom: 0; border-top: 4px solid var(--color-blue);">
+                    <h3 style="color: var(--color-blue);">Bias</h3>
+                    <p style="margin-bottom: 12px;">
+                        <strong>Bias</strong> is the error from overly simplistic assumptions in the learning algorithm. 
+                        A model with high bias pays little attention to the training data and oversimplifies the problem.
+                    </p>
+                    <ul style="margin-left: 20px; margin-bottom: 0;">
+                        <li>Think of it as the model being "stubborn"</li>
+                        <li>It assumes the relationship is simpler than it really is</li>
+                        <li>Example: Fitting a straight line to curved data</li>
+                    </ul>
+                </div>
+                <div class="content-block" style="margin-bottom: 0; border-top: 4px solid var(--color-red);">
+                    <h3 style="color: var(--color-red);">Variance</h3>
+                    <p style="margin-bottom: 12px;">
+                        <strong>Variance</strong> is the error from sensitivity to small fluctuations in the training data. 
+                        A model with high variance pays too much attention to training data, including noise.
+                    </p>
+                    <ul style="margin-left: 20px; margin-bottom: 0;">
+                        <li>Think of it as the model being "too flexible"</li>
+                        <li>It memorizes noise instead of learning patterns</li>
+                        <li>Example: A wiggly curve that passes through every point</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="content-block">
+                <h3>The Tradeoff</h3>
+                <p style="margin-bottom: 12px;">
+                    Here's the key insight: <strong>you can't minimize both at once</strong>. As you decrease bias (make the model more complex), 
+                    variance typically increases. As you decrease variance (make the model simpler), bias typically increases.
+                </p>
+                <p style="margin-bottom: 0;">
+                    The goal is to find the <strong>sweet spot</strong> where total error (bias² + variance) is minimized. 
+                    This is what we'll explore interactively below.
+                </p>
+            </div>
+        </section>
+
+        <section>
+            <h2>Interactive Exploration</h2>
+            <p>
+                Use the controls below to adjust the polynomial degree (model complexity) and noise level. 
+                Watch how the model fit and error curves change as you explore different settings.
+            </p>
+
+            <div class="interactive-panel">
+                <div class="controls-panel">
+                    <div class="controls-row">
+                        <div class="control-item">
+                            <label>Polynomial Degree <span id="degree-display">2</span></label>
+                            <input type="range" id="degree-slider" min="1" max="15" value="2">
+                            <div class="control-hint">Higher = more flexible</div>
+                        </div>
+                        <div class="control-item">
+                            <label>Noise Level (σ) <span id="noise-display">0.5</span></label>
+                            <input type="range" id="noise-slider" min="0" max="3" value="0.5" step="0.1">
+                            <div class="control-hint">Random variation</div>
+                        </div>
+                    </div>
+
+                    <div class="status-row">
+                        <div class="status-dot good" id="status-dot"></div>
+                        <span class="status-text" id="status-text">Good Fit</span>
+                    </div>
+
+                    <div class="metrics-row">
+                        <div class="metric train">
+                            <div class="label">Train</div>
+                            <div class="value" id="train-error">0.00</div>
+                        </div>
+                        <div class="metric val">
+                            <div class="label">Valid</div>
+                            <div class="value" id="val-error">0.00</div>
+                        </div>
+                        <div class="metric gap">
+                            <div class="label">Gap</div>
+                            <div class="value" id="gap-error">0.00</div>
+                        </div>
+                    </div>
+
+                    <div class="presets">
+                        <div class="presets-label">Presets</div>
+                        <button class="preset-btn" onclick="setParams(1, 0.5)">Underfitting</button>
+                        <button class="preset-btn" onclick="setParams(2, 0.5)">Good Fit</button>
+                        <button class="preset-btn" onclick="setParams(12, 0.5)">Overfitting</button>
+                        <button class="preset-btn" onclick="setParams(10, 2.5)">Noisy Overfit</button>
+                    </div>
+                </div>
+
+                <div class="main-chart-panel">
+                    <h3>Data and Model Fit</h3>
+                    <p class="desc">Dashed = true relationship, Red = model prediction</p>
+                    <canvas id="fitChart" style="max-height: 200px;"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-row">
+                <div class="chart-container">
+                    <h3>Error vs Complexity</h3>
+                    <p class="desc">U-shaped validation curve</p>
+                    <canvas id="errorChart" style="max-height: 140px;"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Current Errors</h3>
+                    <p class="desc">Train vs validation</p>
+                    <canvas id="barChart" style="max-height: 140px;"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Key Concepts</h2>
+            <div class="concept-grid">
+                <div class="concept-card underfit">
+                    <h4>Underfitting</h4>
+                    <p>Model is too simple. It cannot capture the underlying pattern. Both training and validation errors are high.</p>
+                </div>
+                <div class="concept-card good">
+                    <h4>Good Fit</h4>
+                    <p>Model complexity matches the data. Validation error is minimized. The gap between errors is small.</p>
+                </div>
+                <div class="concept-card overfit">
+                    <h4>Overfitting</h4>
+                    <p>Model is too complex. It memorizes noise instead of learning patterns. Validation error increases.</p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Try These Experiments</h2>
+            <div class="content-block">
+                <h3>Experiment 1: Finding the Sweet Spot</h3>
+                <ul>
+                    <li>Start with degree = 1 and gradually increase</li>
+                    <li>Watch the validation error (red line) in the Error vs Complexity chart</li>
+                    <li>Find the degree where validation error is lowest</li>
+                </ul>
+            </div>
+            <div class="content-block">
+                <h3>Experiment 2: The Effect of Noise</h3>
+                <ul>
+                    <li>Set degree = 2, noise = 0.5 and note the errors</li>
+                    <li>Increase noise to 2.5 — validation error increases</li>
+                    <li>Now try degree = 10 with noise = 2.5 — observe severe overfitting</li>
+                </ul>
+            </div>
+            <div class="content-block">
+                <h3>Experiment 3: Understanding the Gap</h3>
+                <ul>
+                    <li>At degree = 2, the gap between training and validation error is small</li>
+                    <li>At degree = 12, the gap becomes very large</li>
+                    <li>A large gap is a sign of overfitting</li>
+                </ul>
+            </div>
+        </section>
+
+        <footer>
+            <p>An interactive explanation of the bias-variance tradeoff in machine learning.</p>
+        </footer>
+    </div>
+
+    <script>
+        // ============================================================
+        // BIAS-VARIANCE TRADEOFF VISUALIZATION
+        // Inspired by MLU-Explain style
+        // ============================================================
+
+        // Seeded random for reproducibility
+        let seed = 42;
+        function random() {
+            seed = (seed * 9301 + 49297) % 233280;
+            return seed / 233280;
+        }
+
+        function resetSeed() {
+            seed = 42;
+        }
+
+        // Generate dataset: sleep hours vs mistakes
+        // True relationship: y = (x-7)² + 3 (U-shaped, scaled for clarity)
+        const N_POINTS = 24;
+        const X = [];
+        const yTrue = [];
+
+        // Create evenly spaced points from 4 to 10 hours
+        for (let i = 0; i < N_POINTS; i++) {
+            const x = 4 + (6 * i / (N_POINTS - 1));
+            X.push(x);
+            // Clearer parabola: minimum at 7 hours, symmetric U-shape
+            yTrue.push(Math.pow(x - 7, 2) + 3);
+        }
+
+        const SPLIT = Math.floor(0.6 * N_POINTS);
+
+        let degree = 2;
+        let noiseStd = 0.5;
+
+        let fitChart = null;
+        let errorChart = null;
+        let barChart = null;
+        let updateTimeout = null;
+        let cachedErrors = null;
+        let lastNoiseStd = null;
+
+        // Debounce updates for performance
+        function debounceUpdate() {
+            if (updateTimeout) cancelAnimationFrame(updateTimeout);
+            updateTimeout = requestAnimationFrame(update);
+        }
+
+        // Add Gaussian noise using Box-Muller transform
+        function addNoise(yTrue, std) {
+            resetSeed();
+            return yTrue.map(y => {
+                const u1 = Math.max(random(), 0.0001);
+                const u2 = random();
+                const noise = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+                return y + noise * std;
+            });
+        }
+
+        // Polynomial regression using normal equations
+        function fitPolynomial(X, y, deg) {
+            const n = X.length;
+            const m = deg + 1;
+
+            // Build Vandermonde matrix
+            const A = [];
+            for (let i = 0; i < n; i++) {
+                const row = [];
+                for (let j = 0; j < m; j++) {
+                    row.push(Math.pow(X[i], j));
+                }
+                A.push(row);
+            }
+
+            // Compute A^T * A
+            const ATA = [];
+            for (let i = 0; i < m; i++) {
+                ATA.push([]);
+                for (let j = 0; j < m; j++) {
+                    let sum = 0;
+                    for (let k = 0; k < n; k++) {
+                        sum += A[k][i] * A[k][j];
+                    }
+                    ATA[i].push(sum);
+                }
+            }
+
+            // Compute A^T * y
+            const ATy = [];
+            for (let i = 0; i < m; i++) {
+                let sum = 0;
+                for (let k = 0; k < n; k++) {
+                    sum += A[k][i] * y[k];
+                }
+                ATy.push(sum);
+            }
+
+            // Add regularization for numerical stability
+            for (let i = 0; i < m; i++) {
+                ATA[i][i] += 1e-8;
+            }
+
+            // Solve using Gaussian elimination
+            const aug = ATA.map((row, i) => [...row, ATy[i]]);
+
+            for (let col = 0; col < m; col++) {
+                let maxRow = col;
+                for (let row = col + 1; row < m; row++) {
+                    if (Math.abs(aug[row][col]) > Math.abs(aug[maxRow][col])) {
+                        maxRow = row;
+                    }
+                }
+                [aug[col], aug[maxRow]] = [aug[maxRow], aug[col]];
+
+                const pivot = aug[col][col] || 1e-10;
+                for (let row = col + 1; row < m; row++) {
+                    const f = aug[row][col] / pivot;
+                    for (let j = col; j <= m; j++) {
+                        aug[row][j] -= f * aug[col][j];
+                    }
+                }
+            }
+
+            // Back substitution
+            const coeffs = new Array(m).fill(0);
+            for (let i = m - 1; i >= 0; i--) {
+                coeffs[i] = aug[i][m];
+                for (let j = i + 1; j < m; j++) {
+                    coeffs[i] -= aug[i][j] * coeffs[j];
+                }
+                coeffs[i] /= (aug[i][i] || 1e-10);
+            }
+
+            return coeffs;
+        }
+
+        // Predict using polynomial coefficients
+        function predict(X, coeffs) {
+            return X.map(x => {
+                let y = 0;
+                for (let i = 0; i < coeffs.length; i++) {
+                    y += coeffs[i] * Math.pow(x, i);
+                }
+                return y;
+            });
+        }
+
+        // Mean Squared Error
+        function mse(y1, y2) {
+            let sum = 0;
+            for (let i = 0; i < y1.length; i++) {
+                sum += Math.pow(y1[i] - y2[i], 2);
+            }
+            return sum / y1.length;
+        }
+
+        // Main update function
+        function update() {
+            const yNoisy = addNoise(yTrue, noiseStd);
+
+            const XTrain = X.slice(0, SPLIT);
+            const yTrain = yNoisy.slice(0, SPLIT);
+            const XVal = X.slice(SPLIT);
+            const yVal = yNoisy.slice(SPLIT);
+
+            // Fit current model
+            const coeffs = fitPolynomial(XTrain, yTrain, degree);
+            const yTrainPred = predict(XTrain, coeffs);
+            const yValPred = predict(XVal, coeffs);
+
+            // Compute errors
+            const trainMSE = mse(yTrain, yTrainPred);
+            const valMSE = mse(yVal, yValPred);
+            const gap = valMSE - trainMSE;
+
+            // Update display
+            document.getElementById('train-error').textContent = trainMSE.toFixed(2);
+            document.getElementById('val-error').textContent = valMSE.toFixed(2);
+            document.getElementById('gap-error').textContent = gap.toFixed(2);
+
+            // Update status
+            const statusDot = document.getElementById('status-dot');
+            const statusText = document.getElementById('status-text');
+            statusDot.classList.remove('underfit', 'good', 'overfit');
+            
+            if (degree <= 1) {
+                statusDot.classList.add('underfit');
+                statusText.textContent = 'Underfitting — model too simple';
+            } else if (degree <= 5) {
+                statusDot.classList.add('good');
+                statusText.textContent = 'Good Fit — balanced complexity';
+            } else {
+                statusDot.classList.add('overfit');
+                statusText.textContent = 'Overfitting — model too complex';
+            }
+
+            // Generate smooth curve for plotting (fewer points for speed)
+            const XSmooth = [];
+            for (let i = 0; i <= 15; i++) {
+                XSmooth.push(4 + 6 * i / 15);
+            }
+            const ySmooth = predict(XSmooth, coeffs);
+            const yTrueSmooth = XSmooth.map(x => Math.pow(x - 7, 2) + 3);
+
+            // Compute errors for all degrees (cache when noise unchanged)
+            let allTrainErrors, allValErrors;
+            if (cachedErrors && lastNoiseStd === noiseStd) {
+                allTrainErrors = cachedErrors.train;
+                allValErrors = cachedErrors.val;
+            } else {
+                allTrainErrors = [];
+                allValErrors = [];
+                for (let d = 1; d <= 15; d++) {
+                    const c = fitPolynomial(XTrain, yTrain, d);
+                    allTrainErrors.push(mse(yTrain, predict(XTrain, c)));
+                    allValErrors.push(mse(yVal, predict(XVal, c)));
+                }
+                cachedErrors = { train: allTrainErrors, val: allValErrors };
+                lastNoiseStd = noiseStd;
+            }
+
+            // Update charts
+            updateFitChart(XTrain, yTrain, XVal, yVal, XSmooth, ySmooth, yTrueSmooth);
+            updateErrorChart(allTrainErrors, allValErrors);
+            updateBarChart(trainMSE, valMSE);
+        }
+
+        function updateFitChart(XTrain, yTrain, XVal, yVal, XSmooth, ySmooth, yTrueSmooth) {
+            const ctx = document.getElementById('fitChart');
+            if (!ctx) return;
+
+            if (fitChart) {
+                // Update data instead of destroying for better performance
+                fitChart.data.datasets[0].data = XTrain.map((x, i) => ({ x, y: yTrain[i] }));
+                fitChart.data.datasets[1].data = XVal.map((x, i) => ({ x, y: yVal[i] }));
+                fitChart.data.datasets[2].data = XSmooth.map((x, i) => ({ x, y: yTrueSmooth[i] }));
+                fitChart.data.datasets[3].data = XSmooth.map((x, i) => ({ x, y: ySmooth[i] }));
+                fitChart.data.datasets[3].label = 'Model (deg ' + degree + ')';
+                fitChart.update('none');
+                return;
+            }
+
+            fitChart = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [
+                        {
+                            label: 'Train',
+                            data: XTrain.map((x, i) => ({ x, y: yTrain[i] })),
+                            backgroundColor: '#527699',
+                            pointRadius: 3
+                        },
+                        {
+                            label: 'Valid',
+                            data: XVal.map((x, i) => ({ x, y: yVal[i] })),
+                            backgroundColor: 'rgba(82, 118, 153, 0.4)',
+                            pointRadius: 3
+                        },
+                        {
+                            label: 'True',
+                            data: XSmooth.map((x, i) => ({ x, y: yTrueSmooth[i] })),
+                            type: 'line',
+                            borderColor: '#999',
+                            borderDash: [4, 3],
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            fill: false
+                        },
+                        {
+                            label: 'Model',
+                            data: XSmooth.map((x, i) => ({ x, y: ySmooth[i] })),
+                            type: 'line',
+                            borderColor: '#c44536',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2.5,
+                    devicePixelRatio: 1,
+                    animation: false,
+                    scales: {
+                        x: { min: 3.5, max: 10.5, grid: { display: false } },
+                        y: { min: 0, grid: { color: '#eee' } }
+                    },
+                    plugins: {
+                        legend: { position: 'top', labels: { boxWidth: 10, padding: 8, font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        function updateErrorChart(trainErrors, valErrors) {
+            const ctx = document.getElementById('errorChart');
+            if (!ctx) return;
+
+            const labels = Array.from({ length: 15 }, (_, i) => i + 1);
+
+            if (errorChart) {
+                errorChart.data.datasets[0].data = trainErrors;
+                errorChart.data.datasets[1].data = valErrors;
+                // Update vertical line position
+                errorChart.options.plugins.annotation.annotations.currentDegree.xMin = degree;
+                errorChart.options.plugins.annotation.annotations.currentDegree.xMax = degree;
+                errorChart.update('none');
+                return;
+            }
+
+            errorChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Train', data: trainErrors, borderColor: '#527699', borderWidth: 2, pointRadius: 1, fill: false, tension: 0 },
+                        { label: 'Valid', data: valErrors, borderColor: '#c44536', borderWidth: 2, pointRadius: 1, fill: false, tension: 0 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2,
+                    devicePixelRatio: 1,
+                    animation: false,
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { min: 0, grid: { color: '#eee' } }
+                    },
+                    plugins: {
+                        legend: { position: 'top', labels: { boxWidth: 10, padding: 8, font: { size: 10 } } },
+                        annotation: {
+                            annotations: {
+                                currentDegree: {
+                                    type: 'line',
+                                    xMin: degree,
+                                    xMax: degree,
+                                    borderColor: '#ff9900',
+                                    borderWidth: 2,
+                                    borderDash: [4, 2],
+                                    label: {
+                                        display: true,
+                                        content: 'Current',
+                                        position: 'start',
+                                        backgroundColor: '#ff9900',
+                                        font: { size: 9 }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateBarChart(trainMSE, valMSE) {
+            const ctx = document.getElementById('barChart');
+            if (!ctx) return;
+
+            if (barChart) {
+                barChart.data.datasets[0].data = [trainMSE, valMSE];
+                barChart.update('none');
+                return;
+            }
+
+            barChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Train', 'Valid'],
+                    datasets: [{ data: [trainMSE, valMSE], backgroundColor: ['#527699', '#c44536'], maxBarThickness: 50 }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2,
+                    devicePixelRatio: 1,
+                    animation: false,
+                    scales: { x: { grid: { display: false } }, y: { min: 0, grid: { color: '#eee' } } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // Event listeners with debouncing
+        document.getElementById('degree-slider').addEventListener('input', function(e) {
+            degree = parseInt(e.target.value);
+            document.getElementById('degree-display').textContent = degree;
+            debounceUpdate();
+        });
+
+        document.getElementById('noise-slider').addEventListener('input', function(e) {
+            noiseStd = parseFloat(e.target.value);
+            document.getElementById('noise-display').textContent = noiseStd.toFixed(1);
+            debounceUpdate();
+        });
+
+        function setParams(d, n) {
+            degree = d;
+            noiseStd = n;
+            document.getElementById('degree-slider').value = d;
+            document.getElementById('noise-slider').value = n;
+            document.getElementById('degree-display').textContent = d;
+            document.getElementById('noise-display').textContent = n.toFixed(1);
+            update();
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            update();
+        });
+
+        // Also try immediate update in case DOMContentLoaded already fired
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            setTimeout(update, 100);
+        }
+    </script>
+</body>
+</html>

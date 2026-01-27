@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decision Trees - Multi-Feature Student Performance</title>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-bg: #f5f0e8;
+            --color-text: #232f3e;
+            --color-text-light: #545b64;
+            --color-accent: #ff9900;
+            --color-good: #419d78;
+            --color-bad: #c44536;
+            --color-blue: #527699;
+            --color-purple: #6b5b95;
+            --color-border: #d5d5d5;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--color-bg);
+            color: var(--color-text);
+            line-height: 1.7;
+            font-size: 18px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        header h1 {
+            font-size: 2.6rem;
+            font-weight: 700;
+            color: var(--color-text);
+            margin-bottom: 16px;
+        }
+
+        header .subtitle {
+            font-size: 1.15rem;
+            color: var(--color-text-light);
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        section {
+            margin-bottom: 50px;
+        }
+
+        section h2 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--color-text);
+            margin-bottom: 14px;
+            padding-bottom: 6px;
+            border-bottom: 3px solid var(--color-accent);
+            display: inline-block;
+        }
+
+        section p {
+            color: var(--color-text-light);
+            margin-bottom: 18px;
+        }
+
+        .viz-container {
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+
+        .viz-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 800px) {
+            .viz-row { grid-template-columns: 1fr; }
+        }
+
+        /* Feature table */
+        .feature-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+        }
+
+        .feature-table th {
+            background: var(--color-bg);
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        .feature-table td {
+            padding: 8px;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .feature-table tr:hover {
+            background: rgba(255, 153, 0, 0.05);
+        }
+
+        .label-good {
+            color: var(--color-good);
+            font-weight: 600;
+        }
+
+        .label-bad {
+            color: var(--color-bad);
+            font-weight: 600;
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            color: var(--color-text-light);
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .legend-dot.good { background: var(--color-good); }
+        .legend-dot.bad { background: var(--color-bad); }
+
+        /* Feature selector */
+        .feature-selector {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .feature-selector label {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .feature-selector select {
+            padding: 8px 12px;
+            border: 2px solid var(--color-border);
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            background: #fff;
+            cursor: pointer;
+        }
+
+        .feature-selector select:focus {
+            outline: none;
+            border-color: var(--color-accent);
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .control-btn {
+            padding: 8px 16px;
+            border: 2px solid var(--color-border);
+            border-radius: 6px;
+            background: #fff;
+            color: var(--color-text);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: inherit;
+        }
+
+        .control-btn:hover {
+            border-color: var(--color-accent);
+            background: #fff8f0;
+        }
+
+        .control-btn.active {
+            border-color: var(--color-accent);
+            background: var(--color-accent);
+            color: #fff;
+        }
+
+        /* Axis */
+        .axis text { font-size: 10px; fill: var(--color-text-light); }
+        .axis-label { font-size: 11px; font-weight: 600; fill: var(--color-text); }
+
+        .data-point {
+            stroke: #fff;
+            stroke-width: 1.5;
+            cursor: pointer;
+            transition: r 0.1s;
+        }
+
+        .data-point:hover { r: 8; }
+        .data-point.highlighted { stroke: var(--color-accent); stroke-width: 3; }
+
+        .decision-boundary {
+            stroke: var(--color-accent);
+            stroke-width: 2;
+            stroke-dasharray: 5, 3;
+        }
+
+        /* Tree */
+        .tree-node rect {
+            fill: #fff;
+            stroke: var(--color-border);
+            stroke-width: 2;
+            rx: 5;
+        }
+
+        .tree-node.decision rect { stroke: var(--color-blue); }
+        .tree-node.leaf-good rect { fill: rgba(65, 157, 120, 0.15); stroke: var(--color-good); }
+        .tree-node.leaf-bad rect { fill: rgba(196, 69, 54, 0.15); stroke: var(--color-bad); }
+
+        .tree-node text { font-size: 9px; fill: var(--color-text); }
+        .tree-link { fill: none; stroke: var(--color-border); stroke-width: 1.5; }
+        .tree-link-label { font-size: 8px; fill: var(--color-text-light); }
+
+        /* Feature importance */
+        .importance-bar {
+            height: 20px;
+            background: var(--color-blue);
+            border-radius: 3px;
+            margin-bottom: 8px;
+        }
+
+        .importance-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .importance-label {
+            width: 120px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .importance-bar-container {
+            flex: 1;
+            background: #e8e8e8;
+            border-radius: 3px;
+            height: 18px;
+            overflow: hidden;
+        }
+
+        .importance-value {
+            width: 50px;
+            text-align: right;
+            font-size: 0.85rem;
+            color: var(--color-accent);
+            font-weight: 600;
+        }
+
+        /* Annotation */
+        .annotation {
+            background: rgba(255, 153, 0, 0.1);
+            border-left: 3px solid var(--color-accent);
+            padding: 12px 16px;
+            margin: 16px 0;
+            border-radius: 0 6px 6px 0;
+            font-size: 0.95rem;
+        }
+
+        /* Prediction panel */
+        .prediction-panel {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 30px;
+            align-items: center;
+        }
+
+        @media (max-width: 600px) {
+            .prediction-panel { grid-template-columns: 1fr; }
+        }
+
+        .slider-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        @media (max-width: 500px) {
+            .slider-group { grid-template-columns: 1fr; }
+        }
+
+        .slider-item {
+            margin-bottom: 8px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
+
+        .slider-label span:first-child { font-weight: 600; }
+        .slider-label .value { color: var(--color-accent); font-weight: 700; }
+
+        input[type="range"] {
+            width: 100%;
+            height: 5px;
+            border-radius: 3px;
+            background: #e0e0e0;
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--color-accent);
+            cursor: pointer;
+            border: 2px solid #fff;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+        }
+
+        .prediction-result {
+            text-align: center;
+            padding: 20px;
+            background: var(--color-bg);
+            border-radius: 8px;
+            min-width: 180px;
+        }
+
+        .prediction-result .label { font-size: 0.85rem; color: var(--color-text-light); margin-bottom: 6px; }
+        .prediction-result .value { font-size: 1.6rem; font-weight: 700; }
+        .prediction-result .path { font-size: 0.75rem; color: var(--color-text-light); margin-top: 8px; line-height: 1.4; }
+
+        footer {
+            text-align: center;
+            padding: 30px 0;
+            color: var(--color-text-light);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--color-border);
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Decision Trees</h1>
+            <p class="subtitle">Predicting student performance using multiple features: study hours, lecture attendance, lab participation, assignments, and more.</p>
+        </header>
+
+        <section>
+            <h2>Student Dataset</h2>
+            <p>Our dataset contains 30 students with 5 features measuring their academic engagement. The goal is to predict whether a student will have Good or Poor performance.</p>
+
+            <div class="viz-container" style="max-height: 350px; overflow-y: auto;">
+                <table class="feature-table" id="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Hours Studied</th>
+                            <th>Lectures (%)</th>
+                            <th>Labs Attended</th>
+                            <th>Assignments (%)</th>
+                            <th>Sleep (hrs)</th>
+                            <th>Performance</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section>
+            <h2>Explore the Data</h2>
+            <p>Choose any two features to visualize how they relate to student performance. Notice how different feature combinations reveal different patterns.</p>
+
+            <div class="viz-container">
+                <div class="feature-selector">
+                    <label>X-Axis:</label>
+                    <select id="x-feature">
+                        <option value="hours">Hours Studied</option>
+                        <option value="lectures">Lectures (%)</option>
+                        <option value="labs">Labs Attended</option>
+                        <option value="assignments">Assignments (%)</option>
+                        <option value="sleep">Sleep (hrs)</option>
+                    </select>
+                    <label>Y-Axis:</label>
+                    <select id="y-feature">
+                        <option value="lectures">Lectures (%)</option>
+                        <option value="hours">Hours Studied</option>
+                        <option value="labs">Labs Attended</option>
+                        <option value="assignments">Assignments (%)</option>
+                        <option value="sleep">Sleep (hrs)</option>
+                    </select>
+                </div>
+
+                <div class="legend">
+                    <div class="legend-item"><div class="legend-dot good"></div><span>Good Performance</span></div>
+                    <div class="legend-item"><div class="legend-dot bad"></div><span>Poor Performance</span></div>
+                </div>
+
+                <div id="explore-scatter"></div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Building the Decision Tree</h2>
+            <p>Watch how the algorithm splits the data step by step. Each split is chosen to maximize information gain — creating the purest possible groups.</p>
+
+            <div class="controls" id="depth-controls">
+                <button class="control-btn active" onclick="setDepth(0)">Start</button>
+                <button class="control-btn" onclick="setDepth(1)">Split 1</button>
+                <button class="control-btn" onclick="setDepth(2)">Split 2</button>
+                <button class="control-btn" onclick="setDepth(3)">Split 3</button>
+                <button class="control-btn" onclick="setDepth(4)">Full Tree</button>
+            </div>
+
+            <div class="viz-row">
+                <div>
+                    <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 8px;">Feature Space (Hours vs Assignments)</h4>
+                    <div id="split-scatter"></div>
+                </div>
+                <div>
+                    <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 8px;">Tree Structure</h4>
+                    <div id="tree-viz"></div>
+                </div>
+            </div>
+
+            <div class="annotation" id="split-annotation">
+                <strong>How it works:</strong> The algorithm evaluates every possible split on every feature and picks the one with the highest information gain.
+            </div>
+        </section>
+
+        <section>
+            <h2>Feature Importance</h2>
+            <p>Not all features are equally useful for prediction. Feature importance shows how much each feature contributes to the decision tree's splits.</p>
+
+            <div class="viz-container">
+                <div id="importance-chart"></div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Make a Prediction</h2>
+            <p>Enter a student's academic profile to see how the decision tree classifies them.</p>
+
+            <div class="viz-container">
+                <div class="prediction-panel">
+                    <div class="slider-group">
+                        <div class="slider-item">
+                            <div class="slider-label">
+                                <span>Hours Studied/Week</span>
+                                <span class="value" id="pred-hours-val">10</span>
+                            </div>
+                            <input type="range" id="pred-hours" min="0" max="20" value="10">
+                        </div>
+                        <div class="slider-item">
+                            <div class="slider-label">
+                                <span>Lectures Attended (%)</span>
+                                <span class="value" id="pred-lectures-val">60</span>
+                            </div>
+                            <input type="range" id="pred-lectures" min="0" max="100" value="60">
+                        </div>
+                        <div class="slider-item">
+                            <div class="slider-label">
+                                <span>Labs Attended</span>
+                                <span class="value" id="pred-labs-val">5</span>
+                            </div>
+                            <input type="range" id="pred-labs" min="0" max="12" value="5">
+                        </div>
+                        <div class="slider-item">
+                            <div class="slider-label">
+                                <span>Assignments Done (%)</span>
+                                <span class="value" id="pred-assignments-val">70</span>
+                            </div>
+                            <input type="range" id="pred-assignments" min="0" max="100" value="70">
+                        </div>
+                        <div class="slider-item">
+                            <div class="slider-label">
+                                <span>Sleep Hours/Night</span>
+                                <span class="value" id="pred-sleep-val">7</span>
+                            </div>
+                            <input type="range" id="pred-sleep" min="3" max="10" value="7">
+                        </div>
+                    </div>
+                    <div class="prediction-result">
+                        <div class="label">Predicted Performance</div>
+                        <div class="value" id="pred-result">Good</div>
+                        <div class="path" id="pred-path"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Key Takeaways</h2>
+            <div class="viz-row" style="grid-template-columns: repeat(3, 1fr);">
+                <div class="viz-container" style="border-top: 3px solid var(--color-good);">
+                    <h4 style="font-size: 0.95rem; margin-bottom: 8px;">Interpretable</h4>
+                    <p style="font-size: 0.85rem; margin: 0;">Decision trees are easy to understand and explain. You can trace exactly why a prediction was made.</p>
+                </div>
+                <div class="viz-container" style="border-top: 3px solid var(--color-accent);">
+                    <h4 style="font-size: 0.95rem; margin-bottom: 8px;">Feature Selection</h4>
+                    <p style="font-size: 0.85rem; margin: 0;">The algorithm automatically identifies which features are most important for prediction.</p>
+                </div>
+                <div class="viz-container" style="border-top: 3px solid var(--color-purple);">
+                    <h4 style="font-size: 0.95rem; margin-bottom: 8px;">Overfitting Risk</h4>
+                    <p style="font-size: 0.85rem; margin: 0;">Too deep trees memorize noise. Use pruning, max depth limits, or ensemble methods like Random Forests.</p>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <p>Interactive Decision Tree visualization for multi-feature student performance prediction.</p>
+        </footer>
+    </div>
+
+    <script>
+        // ============================================================
+        // STUDENT DATA WITH MULTIPLE FEATURES
+        // ============================================================
+        const studentData = [
+            // Good performers
+            { hours: 15, lectures: 90, labs: 10, assignments: 95, sleep: 7, label: 'good' },
+            { hours: 12, lectures: 85, labs: 9, assignments: 88, sleep: 7.5, label: 'good' },
+            { hours: 18, lectures: 92, labs: 11, assignments: 100, sleep: 6.5, label: 'good' },
+            { hours: 14, lectures: 78, labs: 8, assignments: 85, sleep: 8, label: 'good' },
+            { hours: 16, lectures: 88, labs: 10, assignments: 92, sleep: 7, label: 'good' },
+            { hours: 11, lectures: 82, labs: 9, assignments: 80, sleep: 7.5, label: 'good' },
+            { hours: 13, lectures: 75, labs: 7, assignments: 78, sleep: 8, label: 'good' },
+            { hours: 17, lectures: 95, labs: 12, assignments: 98, sleep: 6, label: 'good' },
+            { hours: 10, lectures: 80, labs: 8, assignments: 75, sleep: 7, label: 'good' },
+            { hours: 14, lectures: 70, labs: 7, assignments: 82, sleep: 7.5, label: 'good' },
+            { hours: 12, lectures: 85, labs: 9, assignments: 90, sleep: 8, label: 'good' },
+            { hours: 15, lectures: 77, labs: 8, assignments: 85, sleep: 7, label: 'good' },
+            { hours: 11, lectures: 72, labs: 6, assignments: 70, sleep: 7.5, label: 'good' },
+            { hours: 13, lectures: 88, labs: 10, assignments: 88, sleep: 7, label: 'good' },
+            
+            // Poor performers
+            { hours: 3, lectures: 30, labs: 2, assignments: 25, sleep: 5, label: 'bad' },
+            { hours: 5, lectures: 45, labs: 3, assignments: 40, sleep: 6, label: 'bad' },
+            { hours: 2, lectures: 25, labs: 1, assignments: 20, sleep: 4.5, label: 'bad' },
+            { hours: 6, lectures: 50, labs: 4, assignments: 45, sleep: 5.5, label: 'bad' },
+            { hours: 4, lectures: 35, labs: 2, assignments: 30, sleep: 5, label: 'bad' },
+            { hours: 7, lectures: 40, labs: 3, assignments: 35, sleep: 6, label: 'bad' },
+            { hours: 3, lectures: 55, labs: 4, assignments: 50, sleep: 5.5, label: 'bad' },
+            { hours: 5, lectures: 28, labs: 2, assignments: 28, sleep: 4, label: 'bad' },
+            { hours: 8, lectures: 48, labs: 4, assignments: 55, sleep: 6, label: 'bad' },
+            { hours: 6, lectures: 38, labs: 3, assignments: 42, sleep: 5, label: 'bad' },
+            { hours: 4, lectures: 42, labs: 3, assignments: 38, sleep: 5.5, label: 'bad' },
+            { hours: 7, lectures: 52, labs: 5, assignments: 48, sleep: 6, label: 'bad' },
+            
+            // Edge cases
+            { hours: 9, lectures: 65, labs: 6, assignments: 68, sleep: 7, label: 'good' },
+            { hours: 8, lectures: 58, labs: 5, assignments: 52, sleep: 6.5, label: 'bad' },
+            { hours: 10, lectures: 60, labs: 5, assignments: 60, sleep: 6.5, label: 'good' },
+            { hours: 7, lectures: 62, labs: 5, assignments: 55, sleep: 6, label: 'bad' },
+        ];
+
+        const featureInfo = {
+            hours: { name: 'Hours Studied', min: 0, max: 20 },
+            lectures: { name: 'Lectures (%)', min: 0, max: 100 },
+            labs: { name: 'Labs Attended', min: 0, max: 12 },
+            assignments: { name: 'Assignments (%)', min: 0, max: 100 },
+            sleep: { name: 'Sleep (hrs)', min: 3, max: 10 }
+        };
+
+        const colors = {
+            good: '#419d78',
+            bad: '#c44536',
+            accent: '#ff9900',
+            blue: '#527699',
+            purple: '#6b5b95'
+        };
+
+        // Decision tree (pre-computed optimal splits)
+        const decisionTree = {
+            feature: 'assignments', threshold: 60, condition: 'Assign ≤ 60%',
+            left: {
+                feature: 'hours', threshold: 7, condition: 'Hours ≤ 7',
+                left: { label: 'bad', samples: 11 },
+                right: {
+                    feature: 'labs', threshold: 5, condition: 'Labs ≤ 5',
+                    left: { label: 'bad', samples: 3 },
+                    right: { label: 'good', samples: 1 }
+                }
+            },
+            right: {
+                feature: 'lectures', threshold: 65, condition: 'Lect ≤ 65%',
+                left: { label: 'bad', samples: 1 },
+                right: { label: 'good', samples: 14 }
+            }
+        };
+
+        const featureImportance = [
+            { feature: 'Assignments (%)', importance: 0.42 },
+            { feature: 'Hours Studied', importance: 0.28 },
+            { feature: 'Lectures (%)', importance: 0.15 },
+            { feature: 'Labs Attended', importance: 0.10 },
+            { feature: 'Sleep (hrs)', importance: 0.05 }
+        ];
+
+        let currentDepth = 0;
+
+        // ============================================================
+        // POPULATE DATA TABLE
+        // ============================================================
+        function populateTable() {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = studentData.map((s, i) => `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td>${s.hours}</td>
+                    <td>${s.lectures}</td>
+                    <td>${s.labs}</td>
+                    <td>${s.assignments}</td>
+                    <td>${s.sleep}</td>
+                    <td class="${s.label === 'good' ? 'label-good' : 'label-bad'}">${s.label === 'good' ? 'Good' : 'Poor'}</td>
+                </tr>
+            `).join('');
+        }
+
+        // ============================================================
+        // EXPLORATION SCATTER PLOT
+        // ============================================================
+        function drawExploreScatter() {
+            const container = d3.select('#explore-scatter');
+            const width = container.node().getBoundingClientRect().width;
+            const height = 260;
+            const margin = { top: 15, right: 25, bottom: 40, left: 50 };
+
+            container.selectAll('*').remove();
+
+            const xFeature = document.getElementById('x-feature').value;
+            const yFeature = document.getElementById('y-feature').value;
+
+            const svg = container.append('svg').attr('width', width).attr('height', height);
+
+            const xScale = d3.scaleLinear()
+                .domain([featureInfo[xFeature].min, featureInfo[xFeature].max])
+                .range([margin.left, width - margin.right]);
+
+            const yScale = d3.scaleLinear()
+                .domain([featureInfo[yFeature].min, featureInfo[yFeature].max])
+                .range([height - margin.bottom, margin.top]);
+
+            svg.append('g').attr('class', 'axis')
+                .attr('transform', `translate(0,${height - margin.bottom})`)
+                .call(d3.axisBottom(xScale).ticks(6));
+
+            svg.append('g').attr('class', 'axis')
+                .attr('transform', `translate(${margin.left},0)`)
+                .call(d3.axisLeft(yScale).ticks(5));
+
+            svg.append('text').attr('class', 'axis-label')
+                .attr('x', width / 2).attr('y', height - 5)
+                .attr('text-anchor', 'middle')
+                .text(featureInfo[xFeature].name);
+
+            svg.append('text').attr('class', 'axis-label')
+                .attr('x', -height / 2).attr('y', 12)
+                .attr('text-anchor', 'middle')
+                .attr('transform', 'rotate(-90)')
+                .text(featureInfo[yFeature].name);
+
+            svg.selectAll('.data-point')
+                .data(studentData)
+                .enter().append('circle')
+                .attr('class', 'data-point')
+                .attr('cx', d => xScale(d[xFeature]))
+                .attr('cy', d => yScale(d[yFeature]))
+                .attr('r', 5)
+                .attr('fill', d => d.label === 'good' ? colors.good : colors.bad);
+        }
+
+        // ============================================================
+        // SPLIT SCATTER (Hours vs Assignments)
+        // ============================================================
+        function drawSplitScatter() {
+            const container = d3.select('#split-scatter');
+            const width = container.node().getBoundingClientRect().width;
+            const height = 250;
+            const margin = { top: 15, right: 25, bottom: 40, left: 50 };
+
+            container.selectAll('*').remove();
+
+            const svg = container.append('svg').attr('width', width).attr('height', height);
+
+            const xScale = d3.scaleLinear().domain([0, 20]).range([margin.left, width - margin.right]);
+            const yScale = d3.scaleLinear().domain([0, 100]).range([height - margin.bottom, margin.top]);
+
+            svg.append('g').attr('class', 'axis')
+                .attr('transform', `translate(0,${height - margin.bottom})`)
+                .call(d3.axisBottom(xScale).ticks(5));
+
+            svg.append('g').attr('class', 'axis')
+                .attr('transform', `translate(${margin.left},0)`)
+                .call(d3.axisLeft(yScale).ticks(5));
+
+            svg.append('text').attr('class', 'axis-label')
+                .attr('x', width / 2).attr('y', height - 5)
+                .attr('text-anchor', 'middle').text('Hours Studied');
+
+            svg.append('text').attr('class', 'axis-label')
+                .attr('x', -height / 2).attr('y', 12)
+                .attr('text-anchor', 'middle').attr('transform', 'rotate(-90)')
+                .text('Assignments (%)');
+
+            // Decision boundaries based on depth
+            if (currentDepth >= 1) {
+                // Split 1: Assignments ≤ 60%
+                svg.append('line').attr('class', 'decision-boundary')
+                    .attr('x1', margin.left).attr('x2', width - margin.right)
+                    .attr('y1', yScale(60)).attr('y2', yScale(60));
+            }
+
+            if (currentDepth >= 2) {
+                // Split 2: Hours ≤ 7 (below assignments=60)
+                svg.append('line').attr('class', 'decision-boundary')
+                    .attr('x1', xScale(7)).attr('x2', xScale(7))
+                    .attr('y1', yScale(60)).attr('y2', height - margin.bottom);
+            }
+
+            if (currentDepth >= 3) {
+                // Split 3: Lectures ≤ 65% (above assignments=60) - shown as vertical line on hours=9 for viz
+                svg.append('line').attr('class', 'decision-boundary')
+                    .attr('x1', xScale(9)).attr('x2', xScale(9))
+                    .attr('y1', margin.top).attr('y2', yScale(60));
+            }
+
+            svg.selectAll('.data-point')
+                .data(studentData)
+                .enter().append('circle')
+                .attr('class', 'data-point')
+                .attr('cx', d => xScale(d.hours))
+                .attr('cy', d => yScale(d.assignments))
+                .attr('r', 5)
+                .attr('fill', d => d.label === 'good' ? colors.good : colors.bad);
+        }
+
+        // ============================================================
+        // TREE VISUALIZATION
+        // ============================================================
+        function drawTree() {
+            const container = d3.select('#tree-viz');
+            const width = container.node().getBoundingClientRect().width;
+            const height = 250;
+
+            container.selectAll('*').remove();
+
+            const svg = container.append('svg').attr('width', width).attr('height', height);
+
+            const nodeW = 80, nodeH = 32;
+            const rootX = width / 2, rootY = 15;
+            const levelH = 55;
+            const spread = width / 4.5;
+
+            const drawNode = (x, y, data, isLeaf) => {
+                const cls = isLeaf ? (data.label === 'good' ? 'tree-node leaf-good' : 'tree-node leaf-bad') : 'tree-node decision';
+                const node = svg.append('g').attr('class', cls).attr('transform', `translate(${x - nodeW/2},${y})`);
+                node.append('rect').attr('width', nodeW).attr('height', nodeH);
+                node.append('text')
+                    .attr('x', nodeW / 2).attr('y', nodeH / 2 + 3)
+                    .attr('text-anchor', 'middle')
+                    .attr('font-weight', isLeaf ? '600' : '600')
+                    .attr('fill', isLeaf ? (data.label === 'good' ? colors.good : colors.bad) : colors.text)
+                    .text(isLeaf ? (data.label === 'good' ? 'Good' : 'Poor') : data.condition);
+            };
+
+            const drawLink = (x1, y1, x2, y2, label) => {
+                svg.append('path').attr('class', 'tree-link')
+                    .attr('d', `M${x1},${y1} Q${x1},${(y1+y2)/2} ${x2},${y2}`);
+                svg.append('text').attr('class', 'tree-link-label')
+                    .attr('x', (x1 + x2) / 2 + (x2 < x1 ? -8 : 8))
+                    .attr('y', (y1 + y2) / 2 - 2)
+                    .attr('text-anchor', 'middle').text(label);
+            };
+
+            if (currentDepth === 0) {
+                drawNode(rootX, rootY, { condition: 'All Data' }, false);
+                return;
+            }
+
+            // Root: Assignments ≤ 60%
+            drawNode(rootX, rootY, decisionTree, false);
+
+            if (currentDepth >= 1) {
+                drawLink(rootX, rootY + nodeH, rootX - spread, rootY + levelH, 'Yes');
+                drawLink(rootX, rootY + nodeH, rootX + spread, rootY + levelH, 'No');
+
+                if (currentDepth === 1) {
+                    drawNode(rootX - spread, rootY + levelH, { label: 'bad' }, true);
+                    drawNode(rootX + spread, rootY + levelH, { label: 'good' }, true);
+                } else {
+                    drawNode(rootX - spread, rootY + levelH, decisionTree.left, false);
+                    drawNode(rootX + spread, rootY + levelH, decisionTree.right, false);
+                }
+            }
+
+            if (currentDepth >= 2) {
+                const lx = rootX - spread, ly = rootY + levelH;
+                drawLink(lx, ly + nodeH, lx - spread/2, ly + levelH, 'Yes');
+                drawLink(lx, ly + nodeH, lx + spread/2, ly + levelH, 'No');
+                drawNode(lx - spread/2, ly + levelH, { label: 'bad' }, true);
+
+                if (currentDepth === 2) {
+                    drawNode(lx + spread/2, ly + levelH, { label: 'good' }, true);
+                } else {
+                    drawNode(lx + spread/2, ly + levelH, decisionTree.left.right, false);
+                }
+            }
+
+            if (currentDepth >= 3) {
+                const rx = rootX + spread, ry = rootY + levelH;
+                drawLink(rx, ry + nodeH, rx - spread/2, ry + levelH, 'Yes');
+                drawLink(rx, ry + nodeH, rx + spread/2, ry + levelH, 'No');
+                drawNode(rx - spread/2, ry + levelH, { label: 'bad' }, true);
+                drawNode(rx + spread/2, ry + levelH, { label: 'good' }, true);
+            }
+
+            if (currentDepth >= 4) {
+                const lx = rootX - spread + spread/2, ly = rootY + levelH * 2;
+                drawLink(lx, ly + nodeH, lx - spread/3, ly + levelH, 'Yes');
+                drawLink(lx, ly + nodeH, lx + spread/3, ly + levelH, 'No');
+                drawNode(lx - spread/3, ly + levelH, { label: 'bad' }, true);
+                drawNode(lx + spread/3, ly + levelH, { label: 'good' }, true);
+            }
+        }
+
+        function setDepth(d) {
+            currentDepth = d;
+            document.querySelectorAll('#depth-controls .control-btn').forEach((btn, i) => {
+                btn.classList.toggle('active', i === d);
+            });
+
+            const annotations = [
+                "<strong>Start:</strong> We have 30 students. Let's find the best way to split them into Good and Poor performers.",
+                "<strong>Split 1:</strong> Assignments ≤ 60% is the best first split! Students who complete more assignments tend to perform better.",
+                "<strong>Split 2:</strong> Among low-assignment students, those who study ≤ 7 hours almost always perform poorly.",
+                "<strong>Split 3:</strong> Among high-assignment students, lecture attendance > 65% is a strong indicator of good performance.",
+                "<strong>Full Tree:</strong> The complete tree uses 4 features to make predictions. Notice how different paths lead to different outcomes."
+            ];
+            document.getElementById('split-annotation').innerHTML = annotations[d];
+
+            drawSplitScatter();
+            drawTree();
+        }
+
+        // ============================================================
+        // FEATURE IMPORTANCE
+        // ============================================================
+        function drawImportance() {
+            const container = document.getElementById('importance-chart');
+            container.innerHTML = featureImportance.map(f => `
+                <div class="importance-row">
+                    <span class="importance-label">${f.feature}</span>
+                    <div class="importance-bar-container">
+                        <div class="importance-bar" style="width: ${f.importance * 100}%; background: ${colors.blue};"></div>
+                    </div>
+                    <span class="importance-value">${(f.importance * 100).toFixed(0)}%</span>
+                </div>
+            `).join('');
+        }
+
+        // ============================================================
+        // PREDICTION
+        // ============================================================
+        function predict() {
+            const hours = +document.getElementById('pred-hours').value;
+            const lectures = +document.getElementById('pred-lectures').value;
+            const labs = +document.getElementById('pred-labs').value;
+            const assignments = +document.getElementById('pred-assignments').value;
+            const sleep = +document.getElementById('pred-sleep').value;
+
+            // Update displays
+            document.getElementById('pred-hours-val').textContent = hours;
+            document.getElementById('pred-lectures-val').textContent = lectures + '%';
+            document.getElementById('pred-labs-val').textContent = labs;
+            document.getElementById('pred-assignments-val').textContent = assignments + '%';
+            document.getElementById('pred-sleep-val').textContent = sleep;
+
+            // Traverse tree
+            let path = [];
+            let result;
+
+            if (assignments <= 60) {
+                path.push('Assign ≤ 60% ✓');
+                if (hours <= 7) {
+                    path.push('Hours ≤ 7 ✓');
+                    result = 'bad';
+                } else {
+                    path.push('Hours ≤ 7 ✗');
+                    if (labs <= 5) {
+                        path.push('Labs ≤ 5 ✓');
+                        result = 'bad';
+                    } else {
+                        path.push('Labs ≤ 5 ✗');
+                        result = 'good';
+                    }
+                }
+            } else {
+                path.push('Assign ≤ 60% ✗');
+                if (lectures <= 65) {
+                    path.push('Lect ≤ 65% ✓');
+                    result = 'bad';
+                } else {
+                    path.push('Lect ≤ 65% ✗');
+                    result = 'good';
+                }
+            }
+
+            const resEl = document.getElementById('pred-result');
+            resEl.textContent = result === 'good' ? 'Good' : 'Poor';
+            resEl.style.color = result === 'good' ? colors.good : colors.bad;
+            document.getElementById('pred-path').textContent = 'Path: ' + path.join(' → ');
+        }
+
+        // ============================================================
+        // EVENT LISTENERS
+        // ============================================================
+        document.getElementById('x-feature').addEventListener('change', drawExploreScatter);
+        document.getElementById('y-feature').addEventListener('change', drawExploreScatter);
+
+        ['pred-hours', 'pred-lectures', 'pred-labs', 'pred-assignments', 'pred-sleep'].forEach(id => {
+            document.getElementById(id).addEventListener('input', predict);
+        });
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        function init() {
+            populateTable();
+            drawExploreScatter();
+            drawSplitScatter();
+            drawTree();
+            drawImportance();
+            predict();
+        }
+
+        window.addEventListener('resize', () => {
+            drawExploreScatter();
+            drawSplitScatter();
+            drawTree();
+        });
+
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            setTimeout(init, 50);
+        } else {
+            document.addEventListener('DOMContentLoaded', init);
+        }
+    </script>
+</body>
+</html>
