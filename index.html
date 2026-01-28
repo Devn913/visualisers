@@ -13,7 +13,7 @@
             --color-accent: #ff9900;
             --color-blue: #527699;
             --color-green: #419d78;
-            --color-purple: #6b5b95;
+            --color-purple: #6b5b95; /* Used for Neural Nets */
             --color-border: #d5d5d5;
         }
 
@@ -83,17 +83,21 @@
             box-shadow: 0 8px 24px rgba(0,0,0,0.12);
         }
 
+        /* Card Specific Styles */
         .viz-card.bias-variance {
             border-left-color: var(--color-blue);
         }
+        .viz-card.bias-variance .tag { background: rgba(82, 118, 153, 0.15); color: var(--color-blue); }
 
         .viz-card.decision-tree {
             border-left-color: var(--color-green);
         }
+        .viz-card.decision-tree .tag { background: rgba(65, 157, 120, 0.15); color: var(--color-green); }
 
-        .viz-card.decision-tree-multi {
+        .viz-card.neural-network {
             border-left-color: var(--color-purple);
         }
+        .viz-card.neural-network .tag { background: rgba(107, 91, 149, 0.15); color: var(--color-purple); }
 
         .viz-card h2 {
             font-size: 1.5rem;
@@ -102,10 +106,6 @@
             display: flex;
             align-items: center;
             gap: 12px;
-        }
-
-        .viz-card .icon {
-            font-size: 1.8rem;
         }
 
         .viz-card p {
@@ -128,10 +128,6 @@
             font-size: 0.8rem;
             font-weight: 600;
         }
-
-        .viz-card.bias-variance .tag { background: rgba(82, 118, 153, 0.15); color: var(--color-blue); }
-        .viz-card.decision-tree .tag { background: rgba(65, 157, 120, 0.15); color: var(--color-green); }
-        .viz-card.decision-tree-multi .tag { background: rgba(107, 91, 149, 0.15); color: var(--color-purple); }
 
         .cta {
             display: inline-flex;
@@ -221,6 +217,29 @@
                     <span class="tag">Entropy</span>
                     <span class="tag">Information Gain</span>
                     <span class="tag">Step-by-Step</span>
+                </div>
+                <div class="cta">
+                    Explore visualization
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </div>
+            </a>
+
+            <a href="nn-visualizer.html" class="viz-card neural-network">
+                <h2>
+                    Neural Networks
+                </h2>
+                <p>
+                    Demystify deep learning in an interactive glass-box lab. Build architectures,
+                    visualize matrix multiplication in real-time, and watch the decision boundary warp 
+                    to solve non-linear problems like spirals and moons.
+                </p>
+                <div class="tags">
+                    <span class="tag">Deep Learning</span>
+                    <span class="tag">Backpropagation</span>
+                    <span class="tag">Matrix Math</span>
+                    <span class="tag">XAI</span>
                 </div>
                 <div class="cta">
                     Explore visualization
